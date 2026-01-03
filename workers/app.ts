@@ -283,6 +283,48 @@ export default {
             }
         }
 
+        // Handle the original failing MCP endpoint
+        if (url.pathname === "/mcp" && request.method === "POST") {
+            try {
+                const body = await request.json() as any
+                
+                // Check if this is an OAuth registration request
+                if (body.client_name || body.redirect_uris) {
+                    const clientId = `sm_${Math.random().toString(36).substring(2, 15)}`
+                    const clientSecret = `sms_${Math.random().toString(36).substring(2, 25)}`
+                    
+                    const responseData = {
+                        client_id: clientId,
+                        client_secret: clientSecret,
+                        client_name: body.client_name || "ChatGPT",
+                        redirect_uris: body.redirect_uris || [],
+                        scope: body.scope || "read write",
+                        grant_types: ["authorization_code"],
+                        response_types: ["code"],
+                        token_endpoint_auth_method: "client_secret_basic",
+                        client_id_issued_at: Math.floor(Date.now() / 1000),
+                        client_secret_expires_at: 0,
+                    }
+
+                    return new Response(JSON.stringify(responseData), {
+                        status: 201,
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Access-Control-Allow-Origin": "*",
+                        },
+                    })
+                }
+            } catch (error) {
+                return new Response(JSON.stringify({ error: "invalid_request" }), {
+                    status: 400,
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Access-Control-Allow-Origin": "*",
+                    },
+                })
+            }
+        }
+
         if (
             url.pathname.includes("sse") ||
             url.pathname.endsWith("/messages")
