@@ -286,7 +286,9 @@ export default {
         // Handle the original failing MCP endpoint
         if (url.pathname === "/mcp" && request.method === "POST") {
             try {
-                const body = await request.json() as any
+                // Clone the request so we can read the body without consuming the original
+                const clonedRequest = request.clone()
+                const body = await clonedRequest.json() as any
                 
                 // Check if this is an OAuth registration request
                 if (body.client_name || body.redirect_uris) {
@@ -308,6 +310,16 @@ export default {
 
                     return new Response(JSON.stringify(responseData), {
                         status: 201,
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Access-Control-Allow-Origin": "*",
+                        },
+                    })
+                } else {
+                    // If not an OAuth request, return an error or handle appropriately
+                    // Don't fall through to requestHandler as the body has been consumed
+                    return new Response(JSON.stringify({ error: "unsupported_request_type" }), {
+                        status: 400,
                         headers: {
                             "Content-Type": "application/json",
                             "Access-Control-Allow-Origin": "*",
